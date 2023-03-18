@@ -48,7 +48,6 @@ mod flipper {
     mod tests {
         /// Imports all the definitions from the outer scope so we can use them here.
         use super::*;
-        use ink_analyzer::Analysis;
 
         /// We test if the default constructor does its job.
         #[ink::test]
@@ -66,21 +65,43 @@ mod flipper {
             assert_eq!(flipper.get(), true);
         }
 
-        #[ink::test]
-        fn do_analysis() {
-            let code = r#"
-                #[ink::contract]
-                mod flipper {
-                    #[ink(storage)]
-                    pub struct Flipper {
-                        value: bool,
+        mod contract {
+            use ink_analyzer::{analysis::diagnostics::Severity, Analysis};
+
+            #[ink::test]
+            fn do_analysis_pass() {
+                let code = r#"
+                    #[ink::contract]
+                    mod flipper {
                     }
-    
-                    // --snip--
-                }
             "#;
-            let diagnostics = Analysis.diagnostics(&code);
-            dbg!(&diagnostics);
+                let diagnostics = Analysis.diagnostics(&code);
+                assert!(diagnostics.is_empty());
+            }
+
+            #[ink::test]
+            fn do_analysis_fails() {
+                let code = r#"
+                    mod flipper {
+                        #[ink::contract]
+                    }
+            "#;
+                let diagnostics = Analysis.diagnostics(&code);
+                assert_eq!(1, diagnostics.len());
+                assert_eq!(Severity::Error, diagnostics[0].severity);
+            }
+
+            #[ink::test]
+            fn unknown_path_fails() {
+                let code = r#"
+                    #[ink::abc]
+                    mod flipper {
+                    }
+            "#;
+                let diagnostics = Analysis.diagnostics(&code);
+                assert_eq!(1, diagnostics.len());
+                assert_eq!(Severity::Warning, diagnostics[0].severity);
+            }
         }
     }
 
