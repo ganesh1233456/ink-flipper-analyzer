@@ -48,6 +48,7 @@ mod flipper {
     mod tests {
         /// Imports all the definitions from the outer scope so we can use them here.
         use super::*;
+        use ink_analyzer::Analysis;
 
         /// We test if the default constructor does its job.
         #[ink::test]
@@ -65,43 +66,18 @@ mod flipper {
             assert_eq!(flipper.get(), true);
         }
 
-        mod contract {
-            use ink_analyzer::{analysis::diagnostics::Severity, Analysis};
+        // probably not the best way to use ink! analyzer :-)
+        // See https://github.com/ink-analyzer/ink-analyzer/issues/1#issuecomment-1474936342 for details
+        #[test]
+        fn no_semantic_errors() {
+            // read current file as a string literal
+            let code = include_str!(file!());
 
-            #[ink::test]
-            fn do_analysis_pass() {
-                let code = r#"
-                    #[ink::contract]
-                    mod flipper {
-                    }
-            "#;
-                let diagnostics = Analysis.diagnostics(&code);
-                assert!(diagnostics.is_empty());
-            }
+            // run diagnostics
+            let diagnostics = Analysis.diagnostics(code);
 
-            #[ink::test]
-            fn do_analysis_fails() {
-                let code = r#"
-                    mod flipper {
-                        #[ink::contract]
-                    }
-            "#;
-                let diagnostics = Analysis.diagnostics(&code);
-                assert_eq!(1, diagnostics.len());
-                assert_eq!(Severity::Error, diagnostics[0].severity);
-            }
-
-            #[ink::test]
-            fn unknown_path_fails() {
-                let code = r#"
-                    #[ink::abc]
-                    mod flipper {
-                    }
-            "#;
-                let diagnostics = Analysis.diagnostics(&code);
-                assert_eq!(1, diagnostics.len());
-                assert_eq!(Severity::Warning, diagnostics[0].severity);
-            }
+            // fail test if any diagnostics failed
+            assert!(diagnostics.is_empty());
         }
     }
 
